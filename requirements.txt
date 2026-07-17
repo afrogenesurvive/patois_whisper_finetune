@@ -21,3 +21,7 @@ tqdm>=4.65.0
 
 # Logging
 tensorboard>=2.13.0
+
+# GUI
+gradio>=4.0.0
+plotly>=5.15.0

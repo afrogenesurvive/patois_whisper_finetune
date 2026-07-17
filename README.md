@@ -134,6 +134,37 @@ Deliver only the adapter weights (a few MB). The client loads the base Whisper m
 
 ---
 
+## GUI — Web Interface
+
+A Gradio-based web GUI is available for users who prefer a visual interface over the command line:
+
+```bash
+# Install GUI dependencies
+pip install gradio plotly
+
+# Launch the GUI
+python gui/app.py
+# → Opens at http://127.0.0.1:7860
+
+# Optional: share with others via a public link
+python gui/app.py --share
+```
+
+The GUI has four tabs:
+
+| Tab | Purpose |
+|-----|---------|
+| **🗂 Data** | Upload audio, generate pseudo-labels, correct transcripts inline, build dataset |
+| **🎓 Train** | Configure hyperparameters, start/stop training, view live loss/WER charts |
+| **📊 Evaluate** | Run WER/CER evaluation, browse error analysis table |
+| **🎙 Infer** | Transcribe audio files (single or batch) with a trained model |
+
+**No changes to existing CLI scripts** — the GUI imports them as a Python library. You can continue using the terminal workflow side-by-side.
+
+See `docs/training_manual.md` for a complete walkthrough.
+
+---
+
 ## Configuration
 
 See `config.yaml` for all training hyperparameters. Key settings:

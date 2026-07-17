@@ -38,6 +38,9 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
+# GUI
+gui/__pycache__/
+
 # Logs and checkpoints
 *.log
 checkpoints/

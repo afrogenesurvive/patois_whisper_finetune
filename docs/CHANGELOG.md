@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0] - 2026-07-17
+
+### Added
+
+- **`gui/`** — new Gradio-based web interface for the Whisper fine-tuning pipeline
+- **`gui/app.py`** — main entry point with 4-tab layout, CLI args for port/share/debug
+- **`gui/backend.py`** — orchestration layer importing `scripts.*` as a library; wraps data prep, training (background thread with stop support), evaluation, and inference
+- **`gui/state.py`** — thread-safe `TrainingState` dataclass with stop event, log buffer, and snapshot helpers
+- **`gui/utils.py`** — TB event reader (`EventAccumulator`), checkpoint lister, config loader/saver, time formatter
+- **`gui/tabs/data_tab.py`** — Data tab: audio upload/record, resample, pseudo-label generation, inline transcript correction (click row → edit → save), dataset builder
+- **`gui/tabs/train_tab.py`** — Train tab: config form (model, mode, hyperparams), save config, start/stop training, live Plotly charts (loss/WER via TB polling), console log with periodic refresh
+- **`gui/tabs/evaluate_tab.py`** — Evaluate tab: checkpoint selector, WER/CER display, sortable error analysis table (reference vs hypothesis), JSON export
+- **`gui/tabs/infer_tab.py`** — Infer tab: single-file transcription (upload or record), batch transcription with ZIP download
+- **`gui/project_config.yaml`** — extensible project configuration for future multi-task support
+- `requirements.txt` — added `gradio>=4.0.0`, `plotly>=5.15.0`
+- `README.md` — added GUI section with launch instructions and tab overview
+- `.gitignore` — added `gui/__pycache__/`
+
 ## [0.2.0-3] - 2026-07-17
 
 ### Changed

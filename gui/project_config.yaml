@@ -1,0 +1,51 @@
+# Whisper Fine-Tune GUI — Project Configuration
+#
+# This file defines the task type, model architecture, and pipeline
+# modules used by the GUI.  It is designed to be extensible so that
+# the same GUI can be adapted to different tasks (ASR, translation,
+# classification) and different model architectures.
+#
+# To adapt for a new project:
+#   1. Copy this file to a new project directory
+#   2. Update `project.name` and `project.task`
+#   3. Change `model.architecture` and `model.name_or_path`
+#   4. Point `pipeline.*` paths to your custom scripts
+
+project:
+  name: "patois-transcriber"
+  task: "automatic-speech-recognition"   # Task type identifier
+  description: >
+    Fine-tune Whisper to transcribe Jamaican Patois audio
+    into plain English text using pseudo-label self-training.
+
+model:
+  architecture: "whisper"                # Model family
+  name_or_path: "openai/whisper-medium"  # Hugging Face model ID
+  modality: "audio"                      # Input modality
+  language: "en"                         # Target language code
+  task: "transcribe"                     # Model task (transcribe / translate)
+
+pipeline:
+  # Python module paths for each pipeline stage.
+  # The GUI imports these modules and calls their functions.
+  data_prep: "scripts.prepare_data"
+  training: "scripts.train"
+  evaluation: "scripts.evaluate"
+  inference: "scripts.transcribe"
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  transcript_dir: "data/transcripts"
+  dataset_dir: "data/dataset"
+  supported_formats: [".wav", ".mp3", ".flac", ".m4a", ".ogg", ".opus"]
+  target_sample_rate: 16000
+
+training:
+  config_file: "config.yaml"
+  checkpoints_dir: "models/checkpoints"
+  logs_dir: "models/checkpoints/logs"
+
+paths:
+  evaluation_results: "models/evaluation_results.json"
+  training_manual: "docs/training_manual.md"
