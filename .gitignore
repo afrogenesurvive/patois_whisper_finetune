@@ -1,0 +1,43 @@
+# Safe folder (backups, archives, etc.)
+safe/
+
+# Data artifacts
+data/processed/
+data/dataset/
+
+# Model checkpoints and adapters
+models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+*.so
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and checkpoints
+*.log
+checkpoints/
