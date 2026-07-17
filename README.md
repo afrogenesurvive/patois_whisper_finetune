@@ -5,6 +5,7 @@ Fine-tune a Whisper model to transcribe **Jamaican Patois audio** into **plain E
 **Approach**: Self-training with pseudo-labeling — generate initial transcripts with a base Whisper model, manually correct them to accurate English translations, then fine-tune on the corrected pairs.
 
 **Proven results** (from research):
+
 - 40+ hours of corrected audio → **WER 0.30** with `whisper-medium` (down from 0.89 untrained)
 - Even 20–35 hours yields significant gains
 
@@ -108,8 +109,8 @@ After deploying, use the improved model to transcribe **new**, unlabeled audio. 
 
 ## Reference Benchmarks
 
-| Configuration | WER  |
-|---------------|------|
+| Configuration                      | WER   |
+| ---------------------------------- | ----- |
 | Untrained Whisper-medium on Patois | ~0.89 |
 | After 40h fine-tune (medium)       | ~0.30 |
 | After 40h fine-tune (small)        | ~0.51 |

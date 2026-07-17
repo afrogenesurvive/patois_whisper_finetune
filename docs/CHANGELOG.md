@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0-2] - 2026-07-17
+
+### Added
+
+- **`docs/training_manual.md`** — comprehensive training instruction manual covering setup, installation, data preparation, training, evaluation, inference, delivery, the data flywheel, troubleshooting, and FAQ
+
 ## [0.2.0-1] - 2026-07-17
 
 ### Added
