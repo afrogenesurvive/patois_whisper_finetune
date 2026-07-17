@@ -152,12 +152,12 @@ python gui/app.py --share
 
 The GUI has four tabs:
 
-| Tab | Purpose |
-|-----|---------|
-| **🗂 Data** | Upload audio, generate pseudo-labels, correct transcripts inline, build dataset |
-| **🎓 Train** | Configure hyperparameters, start/stop training, view live loss/WER charts |
-| **📊 Evaluate** | Run WER/CER evaluation, browse error analysis table |
-| **🎙 Infer** | Transcribe audio files (single or batch) with a trained model |
+| Tab             | Purpose                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| **🗂 Data**     | Upload audio, generate pseudo-labels, correct transcripts inline, build dataset |
+| **🎓 Train**    | Configure hyperparameters, start/stop training, view live loss/WER charts       |
+| **📊 Evaluate** | Run WER/CER evaluation, browse error analysis table                             |
+| **🎙 Infer**    | Transcribe audio files (single or batch) with a trained model                   |
 
 **No changes to existing CLI scripts** — the GUI imports them as a Python library. You can continue using the terminal workflow side-by-side.
 

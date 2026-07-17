@@ -13,17 +13,17 @@
 
 project:
   name: "patois-transcriber"
-  task: "automatic-speech-recognition"   # Task type identifier
+  task: "automatic-speech-recognition" # Task type identifier
   description: >
     Fine-tune Whisper to transcribe Jamaican Patois audio
     into plain English text using pseudo-label self-training.
 
 model:
-  architecture: "whisper"                # Model family
-  name_or_path: "openai/whisper-medium"  # Hugging Face model ID
-  modality: "audio"                      # Input modality
-  language: "en"                         # Target language code
-  task: "transcribe"                     # Model task (transcribe / translate)
+  architecture: "whisper" # Model family
+  name_or_path: "openai/whisper-medium" # Hugging Face model ID
+  modality: "audio" # Input modality
+  language: "en" # Target language code
+  task: "transcribe" # Model task (transcribe / translate)
 
 pipeline:
   # Python module paths for each pipeline stage.
