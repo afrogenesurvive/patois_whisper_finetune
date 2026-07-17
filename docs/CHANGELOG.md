@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.0-1] - 2026-07-17
+
+### Added
+
+- `setup_environment.sh` made executable
+- Verification: all 4 Python scripts pass AST parsing, config.yaml parses correctly, and shell script syntax is valid
+- Full CLI help verified for all `scripts/*.py` scripts
+
+## [0.2.0] - 2026-07-17
+
+### Added
+
+- **`scripts/prepare_data.py`** — data preparation pipeline: audio resampling to 16kHz mono, pseudo-label generation with base Whisper, corrected transcript loading (JSON/CSV), and Hugging Face DatasetDict creation with train/val/test splits
+- **`scripts/train.py`** — training script supporting standard fine-tune, LoRA (`--use_lora`), and resume (`--resume`). Uses `Seq2SeqTrainer` with `predict_with_generate=True`, `DataCollatorSpeechSeq2SeqWithPadding`, and TensorBoard logging
+- **`scripts/evaluate.py`** — evaluation script with batched inference, WER/CER computation, and detailed error analysis table (reference vs hypothesis pairs)
+- **`scripts/transcribe.py`** — single-file inference script with auto LoRA detection, supports any librosa-compatible audio format
+- **`scripts/__init__.py`** — package init for clean imports
+- **`config.yaml`** — YAML hyperparameter config (Whisper-medium, 4k steps, 1e-5 LR, 500 warmup, LoRA section, data section)
+- **`requirements.txt`** — pinned dependencies (torch, transformers, datasets, accelerate, evaluate, jiwer, librosa, soundfile, peft, pyyaml, tqdm, tensorboard)
+- **`setup_environment.sh`** — automated environment setup: creates venv, detects CUDA, installs PyTorch + requirements
+- **`README.md`** — full project documentation with end-to-end workflow, reference benchmarks, and delivery options
+- `data/raw/`, `data/processed/`, `data/transcripts/`, `data/dataset/`, `models/` — project directory structure with `.gitkeep` files
+
 ## [0.1.0] - 2026-07-17
 
 ### Added
