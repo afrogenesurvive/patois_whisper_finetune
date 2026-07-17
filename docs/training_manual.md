@@ -27,20 +27,20 @@
 
 ### Hardware
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| GPU | 8 GB VRAM (e.g., RTX 3070) | 16+ GB VRAM (e.g., RTX 4090, A10, A100) |
-| RAM | 16 GB | 32+ GB |
-| Storage | 50 GB free | 100+ GB free (for datasets + checkpoints) |
-| CPU | 4 cores | 8+ cores |
+| Component | Minimum                    | Recommended                               |
+| --------- | -------------------------- | ----------------------------------------- |
+| GPU       | 8 GB VRAM (e.g., RTX 3070) | 16+ GB VRAM (e.g., RTX 4090, A10, A100)   |
+| RAM       | 16 GB                      | 32+ GB                                    |
+| Storage   | 50 GB free                 | 100+ GB free (for datasets + checkpoints) |
+| CPU       | 4 cores                    | 8+ cores                                  |
 
 **GPU memory estimates by model size and training mode:**
 
-| Model | Full Fine-Tune | LoRA |
-|-------|---------------|------|
-| `whisper-small` | ~6 GB | ~4 GB |
-| `whisper-medium` | ~10 GB | ~6 GB |
-| `whisper-large-v3` | ~16 GB | ~8 GB |
+| Model              | Full Fine-Tune | LoRA  |
+| ------------------ | -------------- | ----- |
+| `whisper-small`    | ~6 GB          | ~4 GB |
+| `whisper-medium`   | ~10 GB         | ~6 GB |
+| `whisper-large-v3` | ~16 GB         | ~8 GB |
 
 > **No GPU?** You can still run pseudo-label generation and inference on CPU, but it will be very slow. Training requires a GPU.
 
@@ -87,6 +87,7 @@ source venv/bin/activate
 ```
 
 This script will:
+
 1. Create a Python virtual environment (`venv/`)
 2. Detect your CUDA version and install the correct PyTorch build
 3. Install all dependencies from `requirements.txt`
@@ -136,6 +137,7 @@ print(f'Config OK — model: {cfg[\"model\"][\"name_or_path\"]}')
 ```
 
 **Expected output:**
+
 ```
 PyTorch 2.x.x
 CUDA available: True
@@ -180,6 +182,7 @@ python scripts/prepare_data.py --raw_dir data/raw --model_size medium
 ```
 
 **What happens:**
+
 1. All audio files are resampled to 16 kHz mono WAV and saved to `data/processed/`
 2. The base Whisper-medium model is downloaded from Hugging Face
 3. Each audio file is transcribed automatically
@@ -188,14 +191,15 @@ python scripts/prepare_data.py --raw_dir data/raw --model_size medium
 
 **Flags:**
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--raw_dir` | `data/raw` | Directory with source audio files |
-| `--model_size` | `medium` | Whisper model for pseudo-labeling (`tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3`) |
-| `--batch_size` | `8` | Batch size for GPU inference |
-| `--output_dir` | `data/processed` | Where resampled WAV files are saved |
+| Flag           | Default          | Description                                                                                            |
+| -------------- | ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `--raw_dir`    | `data/raw`       | Directory with source audio files                                                                      |
+| `--model_size` | `medium`         | Whisper model for pseudo-labeling (`tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3`) |
+| `--batch_size` | `8`              | Batch size for GPU inference                                                                           |
+| `--output_dir` | `data/processed` | Where resampled WAV files are saved                                                                    |
 
 **Common issues:**
+
 - **OOM**: Reduce `--batch_size` to 4 or 2
 - **Slow on CPU**: Expected. Use a GPU or cloud instance temporarily for this step.
 
@@ -208,6 +212,7 @@ The pseudo-labels will be imperfect. Your job is to correct each transcript to *
 **Transcript format options:**
 
 **JSON** (recommended for small/medium datasets) — save one or more `.json` files in `data/transcripts/`:
+
 ```json
 {
   "audio_file_001": "The corrected English transcript goes here.",
@@ -217,6 +222,7 @@ The pseudo-labels will be imperfect. Your job is to correct each transcript to *
 ```
 
 **CSV** (good for spreadsheet editing):
+
 ```csv
 filename,transcript
 audio_file_001,The corrected English transcript goes here.
@@ -224,6 +230,7 @@ audio_file_002,Another corrected transcript.
 ```
 
 **IMPORTANT:**
+
 - Filename stems (without extension) must match exactly — `data/processed/my_clip.wav` needs key `my_clip`
 - Do NOT include the `.wav` extension in the transcript key
 - All text should be **plain English** — not Patois orthography. The goal is English output.
@@ -236,6 +243,7 @@ python scripts/prepare_data.py --skip_pseudo
 ```
 
 **What happens:**
+
 1. Loads your corrected transcripts from `data/transcripts/`
 2. Matches them to the resampled audio files in `data/processed/`
 3. Creates an 80/10/10 train/validation/test split
@@ -244,13 +252,14 @@ python scripts/prepare_data.py --skip_pseudo
 
 **Additional flags:**
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--val_split` | `0.1` | Fraction of data for validation |
-| `--test_split` | `0.1` | Fraction of data for test |
-| `--dataset_dir` | `data/dataset` | Where to save the HF dataset |
+| Flag            | Default        | Description                     |
+| --------------- | -------------- | ------------------------------- |
+| `--val_split`   | `0.1`          | Fraction of data for validation |
+| `--test_split`  | `0.1`          | Fraction of data for test       |
+| `--dataset_dir` | `data/dataset` | Where to save the HF dataset    |
 
 **Expected output:**
+
 ```
 DATASET READY FOR TRAINING
   Train:      340 samples
@@ -259,9 +268,11 @@ DATASET READY FOR TRAINING
 ```
 
 **Troubleshooting "No matching pairs found":**
+
 ```
 ValueError: No matching (audio, transcript) pairs found.
 ```
+
 → Check transcript keys match audio stems exactly (no extension)
 → Verify `data/processed/` exists and has `.wav` files
 → Run from the project root directory
@@ -274,24 +285,24 @@ ValueError: No matching (audio, transcript) pairs found.
 
 Key settings:
 
-| Setting | Default | Notes |
-|---------|---------|-------|
-| `model.name_or_path` | `openai/whisper-medium` | Change to `openai/whisper-small` for lower VRAM |
-| `training.num_steps` | `4000` | Total training steps |
-| `training.learning_rate` | `1.0e-5` | Peak learning rate |
-| `training.per_device_train_batch_size` | `8` | Reduce to 4 or 2 if OOM |
-| `lora.enabled` | `false` | Toggle with `--use_lora` flag |
-| `data.max_audio_length` | `30.0` | Trim audio longer than this (seconds) |
+| Setting                                | Default                 | Notes                                           |
+| -------------------------------------- | ----------------------- | ----------------------------------------------- |
+| `model.name_or_path`                   | `openai/whisper-medium` | Change to `openai/whisper-small` for lower VRAM |
+| `training.num_steps`                   | `4000`                  | Total training steps                            |
+| `training.learning_rate`               | `1.0e-5`                | Peak learning rate                              |
+| `training.per_device_train_batch_size` | `8`                     | Reduce to 4 or 2 if OOM                         |
+| `lora.enabled`                         | `false`                 | Toggle with `--use_lora` flag                   |
+| `data.max_audio_length`                | `30.0`                  | Trim audio longer than this (seconds)           |
 
 **Recommended settings by dataset size:**
 
-| Dataset Size | Model | Mode | Steps | LR |
-|-------------|-------|------|-------|----|
-| < 5 hours | `small` | LoRA | 2000 | 2e-5 |
-| 5–20 hours | `small` | Full | 4000 | 1e-5 |
-| 20–40 hours | `medium` | LoRA | 4000 | 1e-5 |
-| 40+ hours | `medium` | Full | 4000 | 1e-5 |
-| 40+ hours | `large-v3` | LoRA | 4000 | 1e-5 |
+| Dataset Size | Model      | Mode | Steps | LR   |
+| ------------ | ---------- | ---- | ----- | ---- |
+| < 5 hours    | `small`    | LoRA | 2000  | 2e-5 |
+| 5–20 hours   | `small`    | Full | 4000  | 1e-5 |
+| 20–40 hours  | `medium`   | LoRA | 4000  | 1e-5 |
+| 40+ hours    | `medium`   | Full | 4000  | 1e-5 |
+| 40+ hours    | `large-v3` | LoRA | 4000  | 1e-5 |
 
 ### 5.2 Running Training
 
@@ -317,13 +328,13 @@ Track **WER** (should decrease) and **loss** (should decrease steadily).
 
 **Interpreting WER during training:**
 
-| WER | Meaning |
-|-----|---------|
-| > 0.80 | Barely better than untrained — may need more data or longer training |
-| 0.50–0.80 | Improving — roughly every other word is correct |
-| 0.30–0.50 | Good — most words are correct |
-| < 0.30 | Excellent — approaching human-level for this task |
-| < 0.15 | Outstanding — high accuracy transcription |
+| WER       | Meaning                                                              |
+| --------- | -------------------------------------------------------------------- |
+| > 0.80    | Barely better than untrained — may need more data or longer training |
+| 0.50–0.80 | Improving — roughly every other word is correct                      |
+| 0.30–0.50 | Good — most words are correct                                        |
+| < 0.30    | Excellent — approaching human-level for this task                    |
+| < 0.15    | Outstanding — high accuracy transcription                            |
 
 ### 5.4 Adjusting Training Mid-Run
 
@@ -353,6 +364,7 @@ python scripts/evaluate.py --model_path models/checkpoints --split test
 ```
 
 **Output:**
+
 ```
 EVALUATION RESULTS
   Samples:    43
@@ -366,14 +378,14 @@ Sample predictions (first 10):
 
 ### 6.2 All Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--model_path` | (required) | Path to the fine-tuned model |
-| `--dataset_path` | `data/dataset` | Path to the prepared dataset |
-| `--split` | `test` | Split to evaluate (`train`, `validation`, `test`) |
-| `--batch_size` | `8` | Inference batch size |
-| `--device` | `auto` | Override device (`cuda` or `cpu`) |
-| `--output` | `models/evaluation_results.json` | Path to save results |
+| Flag             | Default                          | Description                                       |
+| ---------------- | -------------------------------- | ------------------------------------------------- |
+| `--model_path`   | (required)                       | Path to the fine-tuned model                      |
+| `--dataset_path` | `data/dataset`                   | Path to the prepared dataset                      |
+| `--split`        | `test`                           | Split to evaluate (`train`, `validation`, `test`) |
+| `--batch_size`   | `8`                              | Inference batch size                              |
+| `--device`       | `auto`                           | Override device (`cuda` or `cpu`)                 |
+| `--output`       | `models/evaluation_results.json` | Path to save results                              |
 
 ### 6.3 Understanding Results
 
@@ -385,7 +397,7 @@ Results are saved to `models/evaluation_results.json` with full error analysis:
   "cer": 0.1521,
   "num_samples": 43,
   "error_analysis": [
-    {"audio": "data/processed/sample_001.wav", "reference": "the man went to the store", "hypothesis": "the man went to the store"}
+    { "audio": "data/processed/sample_001.wav", "reference": "the man went to the store", "hypothesis": "the man went to the store" }
   ]
 }
 ```
@@ -413,12 +425,12 @@ python scripts/transcribe.py --model_path models/checkpoints --audio audio.wav -
 
 ### 7.2 All Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--model_path` | (required) | Path to the fine-tuned model |
-| `--audio` | (required) | Path to the audio file to transcribe |
-| `--output` | `None` | Save transcription to file (stdout if omitted) |
-| `--device` | `auto` | Override device (`cuda` or `cpu`) |
+| Flag           | Default    | Description                                    |
+| -------------- | ---------- | ---------------------------------------------- |
+| `--model_path` | (required) | Path to the fine-tuned model                   |
+| `--audio`      | (required) | Path to the audio file to transcribe           |
+| `--output`     | `None`     | Save transcription to file (stdout if omitted) |
+| `--device`     | `auto`     | Override device (`cuda` or `cpu`)              |
 
 ### 7.3 Integration with Pyannote Pipeline
 
@@ -503,13 +515,13 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 
 **Expected diminishing returns:**
 
-| Iteration | New Data | Expected WER |
-|-----------|----------|-------------|
-| Baseline | 0 hours | ~0.89 |
-| 2nd | +10 hours | ~0.55 |
-| 3rd | +20 hours (cumulative) | ~0.40 |
-| 4th | +40 hours (cumulative) | ~0.30 |
-| 5th+ | +60+ hours | ~0.20–0.25 |
+| Iteration | New Data               | Expected WER |
+| --------- | ---------------------- | ------------ |
+| Baseline  | 0 hours                | ~0.89        |
+| 2nd       | +10 hours              | ~0.55        |
+| 3rd       | +20 hours (cumulative) | ~0.40        |
+| 4th       | +40 hours (cumulative) | ~0.30        |
+| 5th+      | +60+ hours             | ~0.20–0.25   |
 
 ---
 
@@ -517,34 +529,34 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 
 ### Proven Results
 
-| Configuration | WER |
-|---------------|-----|
-| Untrained Whisper-medium on Patois | ~0.89 |
-| After 20h fine-tune (small) | ~0.51 |
-| After 40h fine-tune (small) | ~0.40 |
-| After 40h fine-tune (medium) | ~0.30 |
+| Configuration                             | WER   |
+| ----------------------------------------- | ----- |
+| Untrained Whisper-medium on Patois        | ~0.89 |
+| After 20h fine-tune (small)               | ~0.51 |
+| After 40h fine-tune (small)               | ~0.40 |
+| After 40h fine-tune (medium)              | ~0.30 |
 | After 40h + iterative correction (medium) | ~0.25 |
 
 ### Training Time Estimates (RTX 4090)
 
-| Model | Mode | 4000 steps |
-|-------|------|------------|
-| `whisper-small` | Full | ~32 min |
-| `whisper-small` | LoRA | ~16 min |
-| `whisper-medium` | Full | ~80 min |
-| `whisper-medium` | LoRA | ~40 min |
+| Model            | Mode | 4000 steps |
+| ---------------- | ---- | ---------- |
+| `whisper-small`  | Full | ~32 min    |
+| `whisper-small`  | LoRA | ~16 min    |
+| `whisper-medium` | Full | ~80 min    |
+| `whisper-medium` | LoRA | ~40 min    |
 
 ### Hyperparameter Reference
 
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Optimizer | AdamW | Standard for transformer fine-tuning |
-| Learning rate | 1e-5 | Reduce to 5e-6 if loss diverges |
-| Warmup steps | 500 | Linear warmup from 0 to peak LR |
-| Total steps | 4000 | Extend to 6000–8000 for larger datasets |
-| Effective batch size | 16 | 8 per device × 2 gradient accumulation |
-| FP16 | True | Mixed precision halves memory usage |
-| Generation beams | 5 | Beam search width for evaluation |
+| Parameter            | Value | Notes                                   |
+| -------------------- | ----- | --------------------------------------- |
+| Optimizer            | AdamW | Standard for transformer fine-tuning    |
+| Learning rate        | 1e-5  | Reduce to 5e-6 if loss diverges         |
+| Warmup steps         | 500   | Linear warmup from 0 to peak LR         |
+| Total steps          | 4000  | Extend to 6000–8000 for larger datasets |
+| Effective batch size | 16    | 8 per device × 2 gradient accumulation  |
+| FP16                 | True  | Mixed precision halves memory usage     |
+| Generation beams     | 5     | Beam search width for evaluation        |
 
 ---
 
@@ -552,44 +564,44 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 
 ### 11.1 Installation
 
-| Problem | Solution |
-|---------|----------|
-| `pip install torch` fails | Install from pytorch.org with `--index-url` |
-| `librosa` fails on macOS | `brew install libsndfile ffmpeg` then `pip install librosa` |
-| `soundfile` import fails | `sudo apt-get install libsndfile1` (Linux) |
-| `torch.cuda.is_available()` is False | Check `nvidia-smi` and reinstall matching CUDA PyTorch |
+| Problem                              | Solution                                                    |
+| ------------------------------------ | ----------------------------------------------------------- |
+| `pip install torch` fails            | Install from pytorch.org with `--index-url`                 |
+| `librosa` fails on macOS             | `brew install libsndfile ffmpeg` then `pip install librosa` |
+| `soundfile` import fails             | `sudo apt-get install libsndfile1` (Linux)                  |
+| `torch.cuda.is_available()` is False | Check `nvidia-smi` and reinstall matching CUDA PyTorch      |
 
 ### 11.2 GPU / Memory
 
-| Problem | Solution |
-|---------|----------|
-| CUDA OOM during training | Reduce `batch_size` → 4 or 2, use `--use_lora`, switch to `whisper-small` |
-| CUDA OOM during pseudo-labeling | Reduce `--batch_size` to 2 |
-| Training very slow | Check `nvidia-smi`, try LoRA or smaller model |
+| Problem                         | Solution                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| CUDA OOM during training        | Reduce `batch_size` → 4 or 2, use `--use_lora`, switch to `whisper-small` |
+| CUDA OOM during pseudo-labeling | Reduce `--batch_size` to 2                                                |
+| Training very slow              | Check `nvidia-smi`, try LoRA or smaller model                             |
 
 ### 11.3 Data
 
-| Problem | Solution |
-|---------|----------|
+| Problem                   | Solution                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------- |
 | "No matching pairs found" | Check transcript keys match audio stems exactly; verify `data/processed/` has files |
-| Audio files too long | Increase `max_audio_length` in config (uses more memory) |
-| Resample failures | Check for corrupt audio files in `data/raw/` |
+| Audio files too long      | Increase `max_audio_length` in config (uses more memory)                            |
+| Resample failures         | Check for corrupt audio files in `data/raw/`                                        |
 
 ### 11.4 Training
 
-| Problem | Solution |
-|---------|----------|
-| Loss is NaN | Reduce learning rate to 5e-6, check for empty transcripts |
-| WER not improving | Check transcript quality, increase dataset size, try LoRA (acts as regularizer) |
-| Disk space running out | `save_total_limit: 3` keeps only last 3 checkpoints; manually delete old ones |
+| Problem                | Solution                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| Loss is NaN            | Reduce learning rate to 5e-6, check for empty transcripts                       |
+| WER not improving      | Check transcript quality, increase dataset size, try LoRA (acts as regularizer) |
+| Disk space running out | `save_total_limit: 3` keeps only last 3 checkpoints; manually delete old ones   |
 
 ### 11.5 Evaluation / Inference
 
-| Problem | Solution |
-|---------|----------|
-| Model outputs gibberish | May have overfit — check evaluation WER. Try CPU inference to rule out CUDA issues |
-| LoRA adapter not detected | Check `adapter_config.json` exists in `--model_path` |
-| Audio format not supported | Convert to WAV first: `ffmpeg -i input.mp3 -ar 16000 -ac 1 output.wav` |
+| Problem                    | Solution                                                                           |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| Model outputs gibberish    | May have overfit — check evaluation WER. Try CPU inference to rule out CUDA issues |
+| LoRA adapter not detected  | Check `adapter_config.json` exists in `--model_path`                               |
+| Audio format not supported | Convert to WAV first: `ffmpeg -i input.mp3 -ar 16000 -ac 1 output.wav`             |
 
 ### 11.6 Debugging Checklist
 

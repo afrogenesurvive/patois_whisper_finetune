@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0-3] - 2026-07-17
+
+### Changed
+
+- `docs/training_manual.md` — auto-formatted markdown tables and spacing for consistent readability
+
 ## [0.2.0-2] - 2026-07-17
 
 ### Added
