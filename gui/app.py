@@ -26,6 +26,7 @@ import gradio as gr
 from gui.tabs.data_tab import create_data_tab
 from gui.tabs.train_tab import create_train_tab
 from gui.tabs.evaluate_tab import create_evaluate_tab
+from gui.tabs.guide_tab import create_guide_tab
 from gui.tabs.infer_tab import create_infer_tab
 
 logging.basicConfig(
@@ -53,11 +54,12 @@ def build_app() -> gr.Blocks:
             "all from your browser."
         )
 
-        # Create all four tabs
+        # Create all five tabs
         # Pass the app (Blocks) instance so tabs can register load events
         create_data_tab(app)
         create_train_tab(app)
         create_evaluate_tab()
+        create_guide_tab()
         create_infer_tab()
 
         gr.Markdown(
