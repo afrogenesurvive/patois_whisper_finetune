@@ -30,7 +30,7 @@ def _list_audio_files() -> List[str]:
     return sorted(p.stem for p in proc.glob("*.wav"))
 
 
-def _build_file_table(audio_stems: List[str]) -> List[List]:
+def _build_file_table(audio_stems: List[str]) -> List[List[str]]:
     """
     Build a table with columns: Play button, filename, pseudo-label,
     corrected text (if any), and edit/save buttons.
@@ -44,7 +44,7 @@ def _build_file_table(audio_stems: List[str]) -> List[List]:
     return rows
 
 
-def _on_upload(files: List[str]) -> Tuple[str, List]:
+def _on_upload(files: List[str]) -> Tuple[str, List[List[str]]]:
     """Handle file upload: save to data/raw, then resample."""
     if not files:
         return "No files uploaded.", []
@@ -64,7 +64,7 @@ def _on_upload(files: List[str]) -> Tuple[str, List]:
     return msg, [[s, get_corrections().get(s, "✏ Not yet corrected")] for s in stems]
 
 
-def _on_generate_pseudo(model_size: str) -> Tuple[str, List]:
+def _on_generate_pseudo(model_size: str) -> Tuple[str, List[List[str]]]:
     """Generate pseudo-labels and rebuild the file table."""
     success, msg, transcripts = run_pseudo_label(model_size=model_size)
     stems = _list_audio_files()
@@ -115,7 +115,7 @@ def _refresh_file_list() -> List:
     return [[s, corrections.get(s, "✏ Not yet corrected")] for s in stems]
 
 
-def create_data_tab() -> gr.Tab:
+def create_data_tab(app: gr.Blocks) -> gr.Tab:
     """Build the Gradio Data tab."""
     with gr.Tab("🗂 Data") as tab:
         gr.Markdown(
@@ -233,10 +233,10 @@ def create_data_tab() -> gr.Tab:
         )
 
         # Refresh file list periodically (every 10s)
-        tab.load(
+        timer = gr.Timer(10)
+        timer.tick(
             fn=_refresh_file_list,
             outputs=[file_table],
-            every=10,
         )
 
     return tab

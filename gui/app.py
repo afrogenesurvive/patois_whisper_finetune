@@ -54,8 +54,9 @@ def build_app() -> gr.Blocks:
         )
 
         # Create all four tabs
-        create_data_tab()
-        create_train_tab()
+        # Pass the app (Blocks) instance so tabs can register load events
+        create_data_tab(app)
+        create_train_tab(app)
         create_evaluate_tab()
         create_infer_tab()
 

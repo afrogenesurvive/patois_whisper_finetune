@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0-1] - 2026-07-19
+
+### Added
+
+- **`docs/training_manual.md`** — comprehensive GUI documentation:
+  - Added §3.4 Launching the GUI with CLI flags reference table
+  - Added §3.5 The GUI Interface with tab overview table
+  - Added GUI project structure listing in §2
+  - Added GUI workflow tip in §4 Data Preparation
+  - Added GUI tab references in §5 Training, §6 Evaluation, §7 Inference
+  - Added §11.6 GUI troubleshooting section (port conflicts, imports, blank page, checkpoints)
+  - Added GUI check item to debugging checklist
+- `gui/tabs/data_tab.py` — improved file table display and correction workflow
+- `gui/tabs/train_tab.py` — enhanced config form and chart rendering
+- `gui/app.py` — refined UI layout and error handling
+
+### Fixed
+
+- `venv` (local) — hot-patched `gradio_client/utils.py` to handle boolean `additionalProperties` in JSON schema, fixing `TypeError: argument of type 'bool' is not iterable` on startup
+
 ## [0.3.0] - 2026-07-17
 
 ### Added

@@ -11,6 +11,8 @@
 1. [System Requirements](#1-system-requirements)
 2. [Project Structure](#2-project-structure)
 3. [Setup & Installation](#3-setup--installation)
+   3.4 [Launching the GUI](#34-launching-the-gui)
+   3.5 [The GUI Interface](#35-the-gui-interface)
 4. [Data Preparation (The Critical Step)](#4-data-preparation-the-critical-step)
 5. [Training](#5-training)
 6. [Evaluation](#6-evaluation)
@@ -68,6 +70,12 @@ patois_whisper_finetune/
 │   └── transcribe.py       # Inference with the fine-tuned model
 ├── models/
 │   └── checkpoints/        # Training checkpoints and final model (auto-generated)
+├── gui/
+│   ├── app.py              # Gradio web interface (launch with `python gui/app.py`)
+│   ├── tabs/               # Tab implementations (Data, Train, Evaluate, Infer)
+│   ├── backend.py          # Orchestration layer wrapping CLI scripts
+│   ├── state.py            # Thread-safe training state
+│   └── utils.py            # Checkpoint listing, TensorBoard polling
 ├── config.yaml             # Hyperparameters
 ├── requirements.txt        # Python dependencies
 ├── setup_environment.sh    # One-click environment setup
@@ -148,11 +156,52 @@ scripts/transcribe.py: OK
 Config OK — model: openai/whisper-medium
 ```
 
+### 3.4 Launching the GUI
+
+The project includes a **Gradio-based web interface** that wraps the entire pipeline — data upload, pseudo-labeling, transcript correction, training, evaluation, and inference — into a single browser-based UI.
+
+```bash
+# From the project root, with the virtual environment activated:
+python gui/app.py
+```
+
+Open **http://127.0.0.1:7860** in your browser.
+
+**Optional flags:**
+
+| Flag          | Default | Description                                     |
+| ------------- | ------- | ----------------------------------------------- |
+| `--port PORT` | `7860`  | Change the server port                          |
+| `--share`     | —       | Generate a public shareable link (Gradio share) |
+| `--debug`     | —       | Enable debug mode                               |
+
+```bash
+# Example: custom port + public link
+python gui/app.py --port 7860 --share
+```
+
+The GUI is configured by `gui/project_config.yaml`, which points to the same underlying scripts (`scripts.prepare_data`, `scripts.train`, etc.) that the CLI uses. Everything you can do in the GUI can also be done from the command line, and vice versa.
+
+### 3.5 The GUI Interface
+
+The interface has **four tabs**, each corresponding to a major pipeline stage:
+
+| Tab             | Purpose                                                                  | CLI Equivalent            |
+| --------------- | ------------------------------------------------------------------------ | ------------------------- |
+| 🗂 **Data**     | Upload audio, generate pseudo-labels, correct transcripts, build dataset | `scripts/prepare_data.py` |
+| 🎓 **Train**    | Configure & launch training, view live loss/WER charts                   | `scripts/train.py`        |
+| 📊 **Evaluate** | Run WER/CER evaluation, inspect error analysis                           | `scripts/evaluate.py`     |
+| 🎤 **Infer**    | Transcribe single or batch audio files                                   | `scripts/transcribe.py`   |
+
+Each tab is documented in more detail alongside its CLI counterpart in the sections below. The GUI auto-discovers available checkpoints, polls TensorBoard logs for live metric charts, and saves corrections incrementally — no file management required.
+
 ---
 
 ## 4. Data Preparation (The Critical Step)
 
 This is the most important and time-consuming part. The quality of your transcripts directly determines the quality of your final model.
+
+> **Tip**: You can perform all of the steps below through the GUI's **🗂 Data tab** (`python gui/app.py`) — upload files with drag-and-drop, generate pseudo-labels with one click, correct transcripts in a table, and build the dataset with a slider. See [§3.5 The GUI Interface](#35-the-gui-interface).
 
 > **Heuristic**: 1 minute of audio takes approximately 5–10 minutes to manually correct for an experienced listener. Plan your effort accordingly.
 
@@ -306,6 +355,8 @@ Key settings:
 
 ### 5.2 Running Training
 
+The GUI **🎓 Train tab** provides the same functionality with a configuration form, start/stop buttons, and live loss/WER charts. Launch the GUI and navigate to the Train tab — no command-line flags needed.
+
 ```bash
 # Standard full fine-tune
 python scripts/train.py --config config.yaml
@@ -323,6 +374,8 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 tensorboard --logdir models/checkpoints/logs
 # Open http://localhost:6006
 ```
+
+The **🎓 Train tab** in the GUI shows live loss and WER charts automatically — no need to open TensorBoard separately. It polls TensorBoard event files every few seconds and renders them as Plotly graphs.
 
 Track **WER** (should decrease) and **loss** (should decrease steadily).
 
@@ -358,6 +411,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python scripts/train.py --config config.yaml
 ## 6. Evaluation
 
 ### 6.1 Basic Evaluation
+
+The GUI **📊 Evaluate tab** provides the same results through a checkpoint dropdown, split selector, and formatted results table. Launch the GUI and navigate to the Evaluate tab.
 
 ```bash
 python scripts/evaluate.py --model_path models/checkpoints --split test
@@ -411,6 +466,8 @@ Results are saved to `models/evaluation_results.json` with full error analysis:
 ## 7. Inference — Using the Model
 
 ### 7.1 Basic Usage
+
+The GUI **🎤 Infer tab** supports single-file transcription (with a file picker) and batch transcription (upload multiple files, download a ZIP). No command-line flags needed.
 
 ```bash
 # Transcribe a single file (auto-detects LoRA vs full model)
@@ -603,12 +660,23 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 | LoRA adapter not detected  | Check `adapter_config.json` exists in `--model_path`                               |
 | Audio format not supported | Convert to WAV first: `ffmpeg -i input.mp3 -ar 16000 -ac 1 output.wav`             |
 
-### 11.6 Debugging Checklist
+### 11.6 GUI
+
+| Problem                                      | Solution                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------- |
+| GUI won't start / port in use                | Use `--port` to pick a different port: `python gui/app.py --port 7861`      |
+| `ModuleNotFoundError: No module named 'gui'` | Run from the project root directory, not from inside `gui/`                 |
+| Charts show "Waiting for data..."            | Training must be started first; TensorBoard logs need a few steps to appear |
+| Blank page in browser                        | Check the terminal for errors; ensure `gradio>=4.0.0` is installed          |
+| "No checkpoints found" in dropdown           | Run training first, or verify `models/checkpoints/` exists                  |
+
+### 11.7 Debugging Checklist
 
 ```
 [ ] Is the virtual environment activated?          source venv/bin/activate
 [ ] Is CUDA available?                             python -c "import torch; print(torch.cuda.is_available())"
 [ ] Is the config valid?                           python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+[ ] Is the GUI running?                            Open http://127.0.0.1:7860
 [ ] Does the dataset exist?                        ls data/dataset/
 [ ] Are transcripts in the right place?            ls data/transcripts/
 [ ] Is there enough disk space?                    df -h .
@@ -616,7 +684,7 @@ python scripts/train.py --config config.yaml --resume models/checkpoints/checkpo
 [ ] Are the audio files valid?                     ffprobe data/raw/your_file.mp3
 ```
 
-### 11.7 Enabling Debug Logging
+### 11.8 Enabling Debug Logging
 
 Edit the logging line at the top of any script:
 
@@ -665,6 +733,10 @@ A: Try LoRA mode, switch to `whisper-small`, reduce `max_audio_length`, or add `
 ```bash
 # ── One-time setup ──────────────────────────────
 bash setup_environment.sh && source venv/bin/activate
+
+# ── GUI (alternative to all CLI steps below) ────
+python gui/app.py
+#   → Open http://127.0.0.1:7860
 
 # ── Data pipeline ───────────────────────────────
 python scripts/prepare_data.py --raw_dir data/raw --model_size medium

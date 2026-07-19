@@ -74,10 +74,9 @@ def _get_wer_chart() -> go.Figure:
     return _get_chart("eval/wer", "Validation WER", "WER")
 
 
-def _on_start(config_path: str) -> str:
+def _on_start() -> str:
     """Handle start training button."""
-    # Save current form values to config.yaml before starting
-    return start_training(config_path)
+    return start_training()
 
 
 def _on_stop() -> str:
@@ -85,7 +84,7 @@ def _on_stop() -> str:
     return stop_training()
 
 
-def create_train_tab() -> gr.Tab:
+def create_train_tab(app: gr.Blocks) -> gr.Tab:
     """Build the Gradio Train tab."""
     config = _load_config_form()
     model_cfg = config.get("model", {})
@@ -316,10 +315,10 @@ def create_train_tab() -> gr.Tab:
         )
 
         # Periodic refresh every 2 seconds
-        tab.load(
+        timer = gr.Timer(2)
+        timer.tick(
             fn=_periodic_update,
             outputs=[status_text, step_text, loss_chart, wer_chart, console_log],
-            every=2,
         )
 
     return tab
