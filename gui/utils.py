@@ -12,9 +12,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from tensorboard.backend.event_processing.event_accumulator import (
-    EventAccumulator,
-)
 
 
 def list_checkpoints(checkpoints_dir: str = "models/checkpoints") -> List[str]:
@@ -75,6 +72,10 @@ def read_tb_scalar(
         return [], []
 
     try:
+        from tensorboard.backend.event_processing.event_accumulator import (
+            EventAccumulator,
+        )
+
         ea = EventAccumulator(str(log_path))
         ea.Reload()
 
@@ -93,6 +94,8 @@ def read_tb_scalar(
 
         return steps, values
 
+    except ImportError:
+        return [], []
     except Exception:
         return [], []
 
@@ -114,6 +117,10 @@ def read_training_metrics(log_dir: str) -> Dict[str, dict]:
         return {}
 
     try:
+        from tensorboard.backend.event_processing.event_accumulator import (
+            EventAccumulator,
+        )
+
         ea = EventAccumulator(str(log_path))
         ea.Reload()
         scalar_tags = ea.Tags().get("scalars", [])
@@ -127,6 +134,8 @@ def read_training_metrics(log_dir: str) -> Dict[str, dict]:
             }
         return metrics
 
+    except ImportError:
+        return {}
     except Exception:
         return {}
 

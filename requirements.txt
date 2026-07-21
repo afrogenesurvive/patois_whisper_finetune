@@ -25,3 +25,7 @@ tensorboard>=2.13.0
 # GUI
 gradio>=4.44.0
 plotly>=5.15.0
+
+# macOS native app
+pywebview>=4.0
+py2app>=0.28

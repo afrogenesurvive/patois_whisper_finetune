@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0-2] - 2026-07-21
+
+### Added
+
+- **`Makefile`** — build automation for `app`, `run`, `clean`, and `deps` targets
+- **`gui/launcher.py`** — native macOS app launcher wrapping Gradio in a `pywebview` window; dynamic dependency checking (detects missing PyTorch and offers in-app install)
+- **`setup_app.py`** — `py2app` build script for creating `dist/Whisper Fine-Tune GUI.app`
+- `README.md` — added macOS native app section with prerequisites, build instructions, and first-launch notes
+- `requirements.txt` — added `pywebview>=4.0` and `py2app>=0.28`
+
+### Fixed
+
+- **macOS `.app` launch crash** — added missing `from typing import Optional` import in `gui/launcher.py` (caused `NameError` at startup)
+- **`gui/utils.py`** — deferred `EventAccumulator` import to inside functions with `ImportError` guards, so TensorBoard import failures don't break the GUI
+- **`setup_app.py` PyObjC packages** — added `objc`, `AppKit`, `Foundation`, `WebKit`, `CoreFoundation`, `Quartz` to the `packages` list; required by `webview.platforms.cocoa` for the native macOS window
+- **Build process** — `Makefile` targets now use `./venv/bin/python3` instead of bare `python3` to avoid picking up the system Python which lacks `modulegraph`
+
 ## [0.3.0-1] - 2026-07-19
 
 ### Added

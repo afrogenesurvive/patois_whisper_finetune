@@ -150,6 +150,69 @@ python gui/app.py
 python gui/app.py --share
 ```
 
+---
+
+## macOS App — Native Desktop Application
+
+A native macOS `.app` bundle is available. It wraps the Gradio web interface in a
+`pywebview` window so you can launch from Finder / Dock — no terminal needed.
+
+### Prerequisites
+
+```bash
+pip install pywebview py2app
+```
+
+Or use the Makefile:
+
+```bash
+make deps
+```
+
+### Quick Dev Loop (no .app build)
+
+Test the native window without building the full bundle:
+
+```bash
+make run
+```
+
+This runs `python gui/launcher.py` directly — the same entry point the `.app` uses.
+
+### Build the .app Bundle
+
+```bash
+make app
+```
+
+After the build completes, the app is at:
+
+```
+dist/Whisper Fine-Tune GUI.app
+```
+
+Drag it to `/Applications/` and launch it like any other Mac app.
+
+### First Launch
+
+The `.app` is **lightweight (~200–300 MB)** — PyTorch is excluded from the bundle
+to save 2–4 GB. On first launch, the app detects whether PyTorch is installed:
+
+- **Installed** → The Gradio GUI opens immediately in a native window.
+- **Not installed** → A setup screen appears with an **Install PyTorch** button.
+  Clicking it runs `pip install torch` (CPU-only, appropriate for macOS) and then
+  automatically loads the GUI.
+
+> **Note**: The `gradio` package analytics are disabled by default in the launcher
+> (`GRADIO_ANALYTICS_ENABLED=False`).
+
+### Custom Icon
+
+To add a custom app icon, place a 1024×1024 `icon.icns` file at `gui/icon.icns`.
+No code changes needed — py2app will pick it up if you add `"iconfile": "gui/icon.icns"`
+to the `OPTIONS` dict in `setup_app.py`.
+```
+
 The GUI has four tabs:
 
 | Tab             | Purpose                                                                         |
