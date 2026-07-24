@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 def build_app() -> gr.Blocks:
     """Construct the Gradio application with all four tabs."""
+
+    # Install the shared log buffer so Gradio-side logs are captured too
+    from gui.utils import log_buffer
+    logging.getLogger().addHandler(log_buffer)
+
     with gr.Blocks(
         title="Whisper Fine-Tune GUI",
         theme=gr.themes.Soft(),
@@ -67,6 +72,23 @@ def build_app() -> gr.Blocks:
             "**Whisper Fine-Tune GUI** | "
             "Built with [Gradio](https://gradio.app) | "
             "See `docs/training_manual.md` for full documentation"
+        )
+
+        # ── App Logs accordion (Option C: in-app log viewer) ────────────
+        with gr.Accordion("📋 App Logs", open=False):
+            app_logs = gr.Textbox(
+                label="Application log output",
+                lines=10,
+                max_lines=20,
+                interactive=False,
+            )
+
+        # Periodic log refresh every 3 seconds
+        from gui.utils import get_app_logs
+        _log_timer = gr.Timer(3)
+        _log_timer.tick(
+            fn=lambda: "\n".join(get_app_logs(40)),
+            outputs=[app_logs],
         )
 
     return app

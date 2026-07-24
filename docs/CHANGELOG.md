@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0-3] - 2026-07-24
+
+### Added
+
+- **`gui/launcher.py`** — `_wait_for_server()` TCP readiness check to prevent JS from navigating to Gradio URL before server is ready (eliminates "connection errored" notifications in pywebview)
+- **`gui/launcher.py`** — `_find_python_for_pip()` with 4-step fallback for py2app bundles where `sys.executable` points to a non-runnable stub
+- **`gui/launcher.py`** — `_Api.navigate_to()` using `_window.load_url()` to fix navigation from setup page to Gradio UI (pywebview windows created with `html=` don't support `window.location.href`)
+- **`gui/launcher.py`** — `_Api.get_recent_logs()` JS bridge for real-time log polling on the setup page
+- **`gui/launcher.py`** — Setup page collapsible "Console Log" dark-terminal panel with 1-second polling interval
+- **`gui/launcher.py`** — File logging to `~/.whisper-gui/app.log` via `logging.FileHandler` in `main()`
+- **`gui/utils.py`** — `LogBufferHandler` class (deque-backed `logging.Handler`) and `log_buffer` singleton for shared in-app log viewing across pywebview and Gradio
+- **`gui/app.py`** — "📋 App Logs" accordion in Gradio UI with `gr.Timer(3)` periodic refresh from the shared log buffer
+
+### Fixed
+
+- **`gui/launcher.py`** — `_start_gradio_server()` now creates an asyncio event loop before `build_app()` to prevent `RuntimeError: There is no current event loop in thread` when Gradio's `safe_get_lock()` constructs `asyncio.Lock()` on a background thread (Python 3.9 compat)
+- **`setup_app.py`** — Removed `matplotlib` from `OPTIONS["excludes"]` to prevent build warnings
+
 ## [0.3.0-2] - 2026-07-21
 
 ### Added

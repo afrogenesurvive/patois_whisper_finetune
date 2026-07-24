@@ -48,7 +48,6 @@ OPTIONS = {
         "torch.distributed",
         "torch.cuda",
         "caffe2",
-        "matplotlib",
     ],
     "packages": [
         "gui",

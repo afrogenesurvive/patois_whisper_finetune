@@ -12,8 +12,12 @@ Build a standalone .app bundle:
     python setup_app.py py2app
 """
 
+import asyncio
 import logging
 import os
+import shutil
+import socket
+import subprocess
 import sys
 import threading
 import time
@@ -86,6 +90,18 @@ _SETUP_HTML = """<!DOCTYPE html>
   .hidden { display: none !important; }
   .success { color: #2e7d32; }
   .error { color: #c62828; }
+  .console-wrap { margin-top: 1rem; text-align: left; }
+  .console-wrap summary { cursor: pointer; font-size: 0.85rem; color: #666; padding: 4px 0; }
+  .console-wrap summary:hover { color: #333; }
+  .console-output {
+    background: #1e1e1e; color: #d4d4d4;
+    padding: 12px; border-radius: 8px;
+    font-size: 0.75rem; line-height: 1.5;
+    max-height: 250px; overflow-y: auto;
+    text-align: left; white-space: pre-wrap;
+    word-break: break-all;
+    font-family: 'SF Mono', Monaco, Menlo, 'Courier New', monospace;
+  }
 </style>
 </head>
 <body>
@@ -96,6 +112,10 @@ _SETUP_HTML = """<!DOCTYPE html>
   <div id="detail" class="detail"></div>
   <button id="installBtn" class="hidden">Install PyTorch</button>
 </div>
+<details class="console-wrap">
+  <summary>Console Log</summary>
+  <pre class="console-output" id="consoleOutput">Waiting for logs…</pre>
+</details>
 <script>
   let pywebviewReady = false;
   let checkInterval = null;
@@ -128,7 +148,7 @@ _SETUP_HTML = """<!DOCTYPE html>
   }
 
   function reloadApp() {
-    window.location.href = 'http://127.0.0.1:7860';
+    pywebview.api.navigate_to('http://127.0.0.1:7860');
   }
 
   function checkDependencies() {
@@ -192,6 +212,17 @@ _SETUP_HTML = """<!DOCTYPE html>
       });
     }
   });
+
+  // ── Log polling (runs independently of dependency checks) ──────
+  setInterval(function() {
+    if (pywebviewReady) {
+      pywebview.api.get_recent_logs().then(function(logs) {
+        var el = document.getElementById('consoleOutput');
+        el.textContent = logs || '(no logs yet)';
+        el.scrollTop = el.scrollHeight;
+      });
+    }
+  }, 1000);
 </script>
 </body>
 </html>
@@ -233,6 +264,35 @@ def _torch_is_available(timeout: int = 10) -> bool:
             return False
 
 
+def _find_python_for_pip() -> Optional[str]:
+    """
+    Return a working Python interpreter path that has pip access.
+
+    In a py2app bundle ``sys.executable`` points to a non-runnable stub
+    inside the .app (e.g. ``.../MacOS/Python3``) which doesn't exist as a
+    standalone binary.  This function falls back to the build venv, then
+    PATH, to find a real Python with pip.
+    """
+    # 1. sys.executable if it's an actual file (normal Python, not bundled)
+    if sys.executable and os.path.isfile(sys.executable):
+        return sys.executable
+
+    _root = Path(__file__).resolve().parent.parent
+
+    # 2. venv that was used to build the .app (if it still exists)
+    venv_python = _root / "venv" / "bin" / "python3"
+    if venv_python.is_file():
+        return str(venv_python)
+
+    # 3. PATH lookup
+    which_python = shutil.which("python3")
+    if which_python:
+        return which_python
+
+    # 4. Last resort — might fail, but we tried
+    return "python3"
+
+
 def _install_torch() -> dict:
     """
     Install PyTorch via pip (CPU-only on macOS). Called from the JS bridge
@@ -240,13 +300,14 @@ def _install_torch() -> dict:
 
     Returns ``{"success": True}`` or ``{"success": False, "message": "..."}``.
     """
-    import subprocess
-
     logger.info("User requested PyTorch installation…")
+
+    python_cmd = _find_python_for_pip()
+    logger.info("Using Python interpreter: %s", python_cmd)
 
     # macOS does not have CUDA, so CPU-only is the right choice.
     cmd = [
-        sys.executable, "-m", "pip", "install", "torch",
+        python_cmd, "-m", "pip", "install", "torch",
         "--index-url", "https://download.pytorch.org/whl/cpu",
     ]
 
@@ -283,9 +344,40 @@ _gradio_server_error: Optional[str] = None
 _gradio_app_instance = None
 
 
+def _wait_for_server(port: int, timeout: float = 10.0) -> None:
+    """
+    Poll *port* on 127.0.0.1 until a TCP connection is accepted.
+
+    This prevents the JS from navigating to the Gradio URL before the
+    server is ready, which would cause infinite "connection errored"
+    notifications in the webview.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.2)
+    raise RuntimeError(
+        f"Gradio server did not start on port {port} within {timeout}s"
+    )
+
+
 def _start_gradio_server() -> None:
     """Build and launch the Gradio server in a background thread."""
     global _gradio_app_instance, _gradio_server_error
+
+    # Create an event loop for this background thread.  Python 3.9's
+    # ``asyncio.Lock()`` constructor calls ``get_event_loop()``, so
+    # Gradio's ``safe_get_lock()`` (and anything else that needs an
+    # asyncio context) needs a loop to be available before ``build_app``
+    # constructs the ``Queue`` object.
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    except RuntimeError:
+        pass  # Should not happen in a fresh thread, but be defensive.
 
     try:
         from gui.app import build_app
@@ -294,16 +386,22 @@ def _start_gradio_server() -> None:
         _gradio_app_instance = app
 
         logger.info("Gradio server starting on %s", GRADIO_URL)
-        _gradio_server_started.set()
 
         app.launch(
             server_port=GRADIO_PORT,
             share=False,
             debug=False,
-            show_error=True,
+            show_error=False,          # Suppress connection-error notifications
+            quiet=True,                # Suppress Gradio's internal print noise
             prevent_thread_lock=True,  # Don't block — let pywebview run
             inbrowser=False,           # Don't open a browser tab
         )
+
+        # Only signal ready once the server is actually accepting connections
+        _wait_for_server(GRADIO_PORT, timeout=10.0)
+        logger.info("Gradio server is ready on %s", GRADIO_URL)
+        _gradio_server_started.set()
+
     except Exception as e:
         _gradio_server_error = str(e)
         _gradio_server_failed.set()
@@ -316,6 +414,19 @@ def _start_gradio_server() -> None:
 
 class _Api:
     """JavaScript API exposed to the webview via ``pywebview.api.*``."""
+
+    @staticmethod
+    def navigate_to(url: str) -> None:
+        """Navigate the webview window to *url* (called from JS)."""
+        global _window
+        if _window:
+            _window.load_url(url)
+
+    @staticmethod
+    def get_recent_logs(n: int = 50) -> str:
+        """Return the last *n* log lines as a single string (called from JS)."""
+        from gui.utils import log_buffer
+        return "\n".join(log_buffer.get_logs(n))
 
     @staticmethod
     def install_torch() -> dict:
@@ -362,6 +473,24 @@ class _Api:
 
 def main():
     global _window
+
+    # ── Set up file logging (Option B: visible in ~/.whisper-gui/app.log) ──
+    _log_dir = Path.home() / ".whisper-gui"
+    _log_dir.mkdir(parents=True, exist_ok=True)
+    _log_file = _log_dir / "app.log"
+    fh = logging.FileHandler(str(_log_file), mode="w")
+    fh.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+    )
+    logging.getLogger().addHandler(fh)
+    logger.info("Logging to %s", _log_file)
+
+    # Install the shared log buffer (Option C: in-app log viewing)
+    from gui.utils import log_buffer
+    logging.getLogger().addHandler(log_buffer)
 
     # Start the Gradio server on a daemon thread immediately
     gradio_thread = threading.Thread(target=_start_gradio_server, daemon=True)

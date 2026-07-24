@@ -7,7 +7,9 @@ Utility functions for the Whisper Fine-Tune GUI.
 """
 
 import json
+import logging
 import os
+from collections import deque
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -169,3 +171,43 @@ def save_config(config_path: str, config: dict) -> None:
     import yaml
     with open(config_path, "w") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+
+# ---------------------------------------------------------------------------
+# Shared log buffer — used by launcher.py setup page + Gradio app
+# ---------------------------------------------------------------------------
+
+
+class LogBufferHandler(logging.Handler):
+    """
+    Custom logging handler that stores the last *maxlen* log records in a
+    deque for in-app display. Both the pywebview setup page (via JS API)
+    and the Gradio UI (via periodic refresh) read from this buffer.
+    """
+
+    def __init__(self, maxlen: int = 500):
+        super().__init__()
+        self.buffer: deque = deque(maxlen=maxlen)
+        self.setFormatter(
+            logging.Formatter(
+                "%(asctime)s | %(levelname)s | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Append the formatted record to the buffer."""
+        self.buffer.append(self.format(record))
+
+    def get_logs(self, n: int = 50) -> List[str]:
+        """Return the last *n* log lines."""
+        return list(self.buffer)[-n:]
+
+
+# Module-level singleton — import this from launcher.py and app.py
+log_buffer = LogBufferHandler()
+
+
+def get_app_logs(n: int = 50) -> List[str]:
+    """Convenience helper to fetch the last *n* lines from the shared buffer."""
+    return log_buffer.get_logs(n)
