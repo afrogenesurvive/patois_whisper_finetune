@@ -206,6 +206,19 @@ to save 2–4 GB. On first launch, the app detects whether PyTorch is installed:
 > **Note**: The `gradio` package analytics are disabled by default in the launcher
 > (`GRADIO_ANALYTICS_ENABLED=False`).
 
+### Logging & Troubleshooting
+
+The launcher writes a diagnostic log to:
+
+```
+~/.whisper-gui/app.log
+```
+
+Each launch starts a fresh log; the previous run is kept at `~/.whisper-gui/app.log.prev`.
+The log captures startup errors, Gradio server status, and uncaught exceptions (raw
+`stderr`/`stdout` is redirected into it when the app is launched from Finder/Dock).
+Check it first when the app won't start or the window stays on the setup screen.
+
 ### Custom Icon
 
 To add a custom app icon, place a 1024×1024 `icon.icns` file at `gui/icon.icns`.

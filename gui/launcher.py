@@ -40,8 +40,90 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── File logging ──────────────────────────────────────────────────
+# Set up the file log at IMPORT time (not inside main()) so that even
+# import-time errors and early crashes are captured to disk.  When the
+# .app is launched from Finder/Dock there is no terminal, so we also
+# redirect stderr/stdout into the same log file — that way uncaught
+# tracebacks and print() output are preserved for diagnosis.
+_LOG_DIR = Path.home() / ".whisper-gui"
+_LOG_FILE: Optional[Path] = None
+
+
+def _setup_file_logging() -> Optional[Path]:
+    """Install a FileHandler on the root logger; rotate the previous log.
+
+    Returns the log file path, or None if it could not be created.
+    """
+    global _LOG_FILE
+    try:
+        _LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Keep the previous run's log for comparison before truncating.
+        prev = _LOG_DIR / "app.log.prev"
+        cur = _LOG_DIR / "app.log"
+        if cur.exists():
+            try:
+                shutil.copy2(cur, prev)
+            except OSError:
+                pass
+
+        handler = logging.FileHandler(str(cur), mode="w", encoding="utf-8")
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s | %(levelname)s | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
+        logging.getLogger().addHandler(handler)
+
+        # When launched from Finder/Dock (no TTY), capture raw stdout/stderr
+        # so uncaught exceptions and C-level tracebacks end up in the log.
+        if sys.stderr is None or not getattr(
+            sys.stderr, "isatty", lambda: True
+        )():
+            sys.stderr = open(str(cur), "a", encoding="utf-8")
+        if sys.stdout is None or not getattr(
+            sys.stdout, "isatty", lambda: True
+        )():
+            sys.stdout = open(str(cur), "a", encoding="utf-8")
+
+        _LOG_FILE = cur
+        logger.info("Logging to %s", cur)
+    except Exception:  # pragma: no cover - never let logging break startup
+        logger.exception("Could not set up file logging")
+        _LOG_FILE = None
+    return _LOG_FILE
+
+
+_setup_file_logging()
+
+# ── Gradio server ─────────────────────────────────────────────────
+# Default (preferred) port.  A busy port used to crash the app with
+# "Cannot find empty port in range: 7860-7860"; we now fall back to the
+# next free port automatically (see ``_pick_port`` / ``main()``).
 GRADIO_PORT = 7860
-GRADIO_URL = f"http://127.0.0.1:{GRADIO_PORT}"
+_gradio_port: int = GRADIO_PORT
+_gradio_url: str = f"http://127.0.0.1:{_gradio_port}"
+
+
+def _pick_port(preferred: int = GRADIO_PORT, max_attempts: int = 20) -> int:
+    """Return *preferred* if free, otherwise the next free port >= preferred.
+
+    Used at startup so the Gradio server always gets a port it can bind,
+    instead of failing when 7860 is already occupied.
+    """
+    for port in range(preferred, preferred + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(
+        "No free port found in range "
+        f"{preferred}..{preferred + max_attempts - 1}"
+    )
 
 # ── Global reference so the webview window can be closed from threads
 _window: any = None
@@ -148,7 +230,9 @@ _SETUP_HTML = """<!DOCTYPE html>
   }
 
   function reloadApp() {
-    pywebview.api.navigate_to('http://127.0.0.1:7860');
+    pywebview.api.get_gradio_url().then(function(url) {
+      pywebview.api.navigate_to(url);
+    });
   }
 
   function checkDependencies() {
@@ -230,7 +314,7 @@ _SETUP_HTML = """<!DOCTYPE html>
 
 
 def _make_setup_page_html() -> str:
-    """Return the setup-page HTML rendered with current formatting."""
+    """Return the setup-page HTML (the JS fetches the live Gradio URL)."""
     return _SETUP_HTML
 
 
@@ -365,8 +449,14 @@ def _wait_for_server(port: int, timeout: float = 10.0) -> None:
 
 
 def _start_gradio_server() -> None:
-    """Build and launch the Gradio server in a background thread."""
-    global _gradio_app_instance, _gradio_server_error
+    """Build and launch the Gradio server in a background thread.
+
+    The chosen port can be grabbed by another process between the initial
+    availability check (in ``main()``) and the actual bind — the heavy
+    ``build_app()`` import leaves a window where a race is possible.  On a
+    port conflict we re-pick a free port and retry.
+    """
+    global _gradio_app_instance, _gradio_server_error, _gradio_port, _gradio_url
 
     # Create an event loop for this background thread.  Python 3.9's
     # ``asyncio.Lock()`` constructor calls ``get_event_loop()``, so
@@ -379,33 +469,68 @@ def _start_gradio_server() -> None:
     except RuntimeError:
         pass  # Should not happen in a fresh thread, but be defensive.
 
-    try:
-        from gui.app import build_app
+    from gui.app import build_app
 
-        app = build_app()
-        _gradio_app_instance = app
+    max_attempts = 5
+    for attempt in range(1, max_attempts + 1):
+        try:
+            app = build_app()
+            _gradio_app_instance = app
 
-        logger.info("Gradio server starting on %s", GRADIO_URL)
+            logger.info(
+                "Gradio server starting (attempt %d/%d) on %s",
+                attempt, max_attempts, _gradio_url,
+            )
 
-        app.launch(
-            server_port=GRADIO_PORT,
-            share=False,
-            debug=False,
-            show_error=False,          # Suppress connection-error notifications
-            quiet=True,                # Suppress Gradio's internal print noise
-            prevent_thread_lock=True,  # Don't block — let pywebview run
-            inbrowser=False,           # Don't open a browser tab
-        )
+            app.launch(
+                server_port=_gradio_port,
+                share=False,
+                debug=False,
+                show_error=False,          # Suppress connection-error notifications
+                quiet=True,                # Suppress Gradio's internal print noise
+                prevent_thread_lock=True,  # Don't block — let pywebview run
+                inbrowser=False,           # Don't open a browser tab
+            )
 
-        # Only signal ready once the server is actually accepting connections
-        _wait_for_server(GRADIO_PORT, timeout=10.0)
-        logger.info("Gradio server is ready on %s", GRADIO_URL)
-        _gradio_server_started.set()
+            # Only signal ready once the server is actually accepting connections
+            _wait_for_server(_gradio_port, timeout=10.0)
+            logger.info("Gradio server is ready on %s", _gradio_url)
+            _gradio_server_started.set()
+            return
 
-    except Exception as e:
-        _gradio_server_error = str(e)
-        _gradio_server_failed.set()
-        logger.exception("Gradio server failed to start")
+        except OSError as e:
+            # Port conflict — log who holds it, then pick the next free port.
+            if "port" in str(e).lower() and attempt < max_attempts:
+                try:
+                    holder = subprocess.run(
+                        ["lsof", "-nP", "-iTCP:%d" % _gradio_port],
+                        capture_output=True, text=True, timeout=5,
+                    ).stdout.strip()
+                except Exception:
+                    holder = ""
+                if holder:
+                    logger.warning(
+                        "Port %d is held by:\n%s", _gradio_port, holder
+                    )
+                new_port = _pick_port(_gradio_port + 1)
+                logger.warning(
+                    "Port %d was busy (%s) — retrying on %d",
+                    _gradio_port, e, new_port,
+                )
+                _gradio_port = new_port
+                _gradio_url = f"http://127.0.0.1:{new_port}"
+                continue
+
+            _gradio_server_error = str(e)
+            _gradio_server_failed.set()
+            logger.exception("Gradio server failed to start")
+            return
+
+        except Exception as e:
+            _gradio_server_error = str(e)
+            _gradio_server_failed.set()
+            logger.exception("Gradio server failed to start")
+            return
 
 
 # ---------------------------------------------------------------------------
@@ -421,6 +546,11 @@ class _Api:
         global _window
         if _window:
             _window.load_url(url)
+
+    @staticmethod
+    def get_gradio_url() -> str:
+        """Return the current Gradio URL (port can change after a retry)."""
+        return _gradio_url
 
     @staticmethod
     def get_recent_logs(n: int = 50) -> str:
@@ -472,21 +602,12 @@ class _Api:
 # ---------------------------------------------------------------------------
 
 def main():
-    global _window
+    global _window, _gradio_port, _gradio_url
 
-    # ── Set up file logging (Option B: visible in ~/.whisper-gui/app.log) ──
-    _log_dir = Path.home() / ".whisper-gui"
-    _log_dir.mkdir(parents=True, exist_ok=True)
-    _log_file = _log_dir / "app.log"
-    fh = logging.FileHandler(str(_log_file), mode="w")
-    fh.setFormatter(
-        logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(message)s",
-            datefmt="%H:%M:%S",
-        )
-    )
-    logging.getLogger().addHandler(fh)
-    logger.info("Logging to %s", _log_file)
+    # Pick a free port up-front so the setup page HTML can embed the real URL.
+    _gradio_port = _pick_port()
+    _gradio_url = f"http://127.0.0.1:{_gradio_port}"
+    logger.info("Gradio will use port %d (%s)", _gradio_port, _gradio_url)
 
     # Install the shared log buffer (Option C: in-app log viewing)
     from gui.utils import log_buffer

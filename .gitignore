@@ -31,6 +31,9 @@ env/
 *.swo
 *~
 
+# Local Copilot prompts (workspace-level, kept out of VCS)
+.github/prompts/
+
 # OS
 .DS_Store
 Thumbs.db

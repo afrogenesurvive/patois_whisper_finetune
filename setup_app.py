@@ -82,6 +82,26 @@ OPTIONS = {
         "AppKit._AppKit",
         "Foundation._Foundation",
         "WebKit._WebKit",
+        # uvicorn/anyio resolve these via dynamic string imports, so modulegraph
+        # misses them — without them the Gradio server fails with errors like
+        # "Could not import module 'uvicorn.protocols.http.auto'", "No module
+        # named 'uvicorn.lifespan'", or "No module named 'anyio._backends'".
+        "uvicorn.loops.auto",
+        "uvicorn.loops.asyncio",
+        "uvicorn.loops.uvloop",
+        "uvicorn.protocols.http.auto",
+        "uvicorn.protocols.http.h11_impl",
+        "uvicorn.protocols.http.httptools_impl",
+        "uvicorn.protocols.websockets.auto",
+        "uvicorn.protocols.websockets.wsproto_impl",
+        "uvicorn.protocols.websockets.websockets_impl",
+        "uvicorn.protocols.websockets.websockets_sansio_impl",
+        "uvicorn.lifespan",
+        "uvicorn.lifespan.on",
+        "uvicorn.lifespan.off",
+        "uvicorn.__main__",
+        "anyio._backends",
+        "anyio._backends._asyncio",
     ],
     "plist": {
         "CFBundleName": "Whisper Fine-Tune GUI",

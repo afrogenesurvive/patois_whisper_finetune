@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.1-1] - 2026-08-11
+
+### Added
+
+- **`gui/launcher.py`** — `_setup_file_logging()`: file logging is now configured at import time (not just inside `main()`), writing to `~/.whisper-gui/app.log` and rotating the previous run to `app.log.prev`
+- **`gui/launcher.py`** — when launched from Finder/Dock (no TTY), `sys.stderr`/`sys.stdout` are redirected into the log file so uncaught tracebacks and `print()` output are captured for diagnosis
+- **`gui/launcher.py`** — `_pick_port()` and a retry loop in `_start_gradio_server()`: if the chosen port is occupied (e.g. grabbed during the long Gradio import), the app re-picks a free port and retries up to 5 times instead of failing
+- **`gui/launcher.py`** — `_Api.get_gradio_url()` JS bridge; the setup page now fetches the live Gradio URL before navigating, so it follows a port retry
+- **`setup_app.py`** — bundle the uvicorn/anyio modules loaded via dynamic string imports (`uvicorn.loops.*`, `uvicorn.protocols.http.*`, `uvicorn.protocols.websockets.*`, `uvicorn.lifespan.*`, `uvicorn.__main__`, `anyio._backends.*`) so a clean py2app build can start the Gradio server
+- `.gitignore` — ignore the local `.github/prompts/` directory
+
+### Fixed
+
+- **`gui/launcher.py`** — log file is opened with UTF-8 encoding; previously em-dashes in log messages crashed the handler with `UnicodeEncodeError: 'ascii' codec can't encode '\u2014'` under the `.app`'s ASCII-default Python
+- **`.app` startup** — the recurring "Cannot find empty port in range: 7860-7860" was a misleading symptom of missing dynamically-imported uvicorn/anyio modules; fixed by bundling them (see Added)
+- **`gui/launcher.py`** — on a busy port, the log now records which process holds it (via `lsof`) before retrying, aiding diagnosis
+
 ## [0.3.0-3] - 2026-07-24
 
 ### Added
