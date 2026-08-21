@@ -170,6 +170,36 @@ _SETUP_HTML = """<!DOCTYPE html>
   button:hover { background: #357abd; }
   button:disabled { background: #aaa; cursor: not-allowed; }
   .hidden { display: none !important; }
+  .quit-btn {
+    position: fixed; top: 12px; left: 12px; z-index: 1000;
+    background: rgba(60,60,60,0.85); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .quit-btn:hover { background: #c0392b; }
+  .quit-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5000;
+  }
+  .quit-dialog {
+    background: #fff; border-radius: 12px;
+    padding: 24px 28px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    max-width: 360px; text-align: center;
+  }
+  .quit-dialog h3 { margin: 0 0 8px; font-size: 1.1rem; }
+  .quit-dialog p { color: #666; margin: 0 0 18px; font-size: 0.9rem; }
+  .quit-actions { display: flex; gap: 10px; justify-content: center; }
+  .quit-actions button {
+    border: none; border-radius: 8px;
+    padding: 8px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  }
+  .quit-cancel { background: #e2e2e2; color: #333; }
+  .quit-cancel:hover { background: #d0d0d0; }
+  .quit-confirm { background: #c0392b; color: #fff; }
+  .quit-confirm:hover { background: #a93226; }
   .success { color: #2e7d32; }
   .error { color: #c62828; }
   .console-wrap { margin-top: 1rem; text-align: left; }
@@ -194,6 +224,17 @@ _SETUP_HTML = """<!DOCTYPE html>
   <div id="detail" class="detail"></div>
   <button id="installBtn" class="hidden">Install PyTorch</button>
 </div>
+<button id="quitBtn" class="quit-btn" title="Quit the application">✕ Quit App</button>
+<div id="quitOverlay" class="quit-overlay" style="display:none;">
+  <div class="quit-dialog">
+    <h3>Quit Whisper Fine-Tune GUI?</h3>
+    <p>Any in-progress work will be lost.</p>
+    <div class="quit-actions">
+      <button id="quitCancel" class="quit-cancel">Cancel</button>
+      <button id="quitConfirm" class="quit-confirm">Quit</button>
+    </div>
+  </div>
+</div>
 <details class="console-wrap">
   <summary>Console Log</summary>
   <pre class="console-output" id="consoleOutput">Waiting for logs…</pre>
@@ -201,6 +242,16 @@ _SETUP_HTML = """<!DOCTYPE html>
 <script>
   let pywebviewReady = false;
   let checkInterval = null;
+
+  document.getElementById('quitBtn').addEventListener('click', function() {
+    document.getElementById('quitOverlay').style.display = 'flex';
+  });
+  document.getElementById('quitCancel').addEventListener('click', function() {
+    document.getElementById('quitOverlay').style.display = 'none';
+  });
+  document.getElementById('quitConfirm').addEventListener('click', function() {
+    if (window.pywebview) { pywebview.api.quit_app(); }
+  });
 
   window.addEventListener('pywebviewready', function() {
     pywebviewReady = true;
@@ -564,6 +615,26 @@ class _Api:
         return _install_torch()
 
     @staticmethod
+    def quit_app() -> None:
+        """Quit the application (called by the Quit App button in the UI)."""
+        global _window
+        logger.info("User confirmed app quit…")
+        w = _window
+        if not w:
+            return
+        # Defer the destroy so the JS bridge can send its response before the
+        # window is torn down. Calling destroy() synchronously from a JS API
+        # call hangs the app on macOS (the bridge then tries to evaluate JS
+        # against a destroyed webview).
+        def _do_quit():
+            time.sleep(0.2)
+            try:
+                w.destroy()
+            except Exception:
+                logger.exception("Failed to destroy window")
+        threading.Thread(target=_do_quit, daemon=True).start()
+
+    @staticmethod
     def check_dependencies() -> dict:
         """
         Check which key packages are available.
@@ -632,7 +703,7 @@ def main():
         height=800,
         resizable=True,
         min_size=(600, 400),
-        text_select=False,
+        text_select=True,   # Allow selecting/copying text in the UI
         zoomable=True,
     )
 

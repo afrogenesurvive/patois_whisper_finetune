@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.1-2] - 2026-08-21
+
+### Added
+
+- **Floating "✕ Quit App" button** — added to both the Gradio GUI and the launcher
+  setup screen, with a confirmation dialog, so you can quit the app from inside the
+  window instead of `Cmd+Q`.
+- **`setup_app.py`** — the macOS `.app` now **bundles PyTorch (CPU)** at build time,
+  so it runs out-of-the-box (the bundle is larger, ~1 GB). The runtime "Install
+  PyTorch" setup step is no longer needed.
+
+### Changed
+
+- Text in the app window is now selectable/copyable.
+
 ## [0.0.1-1] - 2026-08-11
 
 ### Added

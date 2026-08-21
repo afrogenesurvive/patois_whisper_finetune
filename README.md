@@ -195,13 +195,14 @@ Drag it to `/Applications/` and launch it like any other Mac app.
 
 ### First Launch
 
-The `.app` is **lightweight (~200–300 MB)** — PyTorch is excluded from the bundle
-to save 2–4 GB. On first launch, the app detects whether PyTorch is installed:
+The `.app` **bundles a CPU-only build of PyTorch at build time**, so it runs
+out-of-the-box — no separate install step. The tradeoff is that the bundle is
+large (~1 GB); the runtime "Install PyTorch" setup screen is no longer needed and
+the Gradio GUI opens immediately in a native window.
 
-- **Installed** → The Gradio GUI opens immediately in a native window.
-- **Not installed** → A setup screen appears with an **Install PyTorch** button.
-  Clicking it runs `pip install torch` (CPU-only, appropriate for macOS) and then
-  automatically loads the GUI.
+A floating **✕ Quit App** button (with a confirmation dialog) is pinned to the
+top-left corner of the window so you can quit from inside the app instead of
+`Cmd+Q`, and text in the UI is selectable/copyable.
 
 > **Note**: The `gradio` package analytics are disabled by default in the launcher
 > (`GRADIO_ANALYTICS_ENABLED=False`).

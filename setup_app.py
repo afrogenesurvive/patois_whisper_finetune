@@ -6,9 +6,9 @@ Usage:
 
 This produces ``dist/Whisper Fine-Tune GUI.app``.
 
-PyTorch is excluded from the bundle to keep it lightweight (~200–300 MB).
-On first launch the app will detect the missing dependency and offer to
-install it automatically.
+PyTorch (CPU) is bundled into the app at build time so the app runs
+out-of-the-box. This makes the bundle large (~1 GB); the tradeoff is
+that the runtime "Install PyTorch" flow is no longer needed.
 """
 
 import sys
@@ -39,15 +39,13 @@ DATA_FILES = [("lib/python3.9/PyObjCTools", _PYOBJCTOOLS_FILES)]
 
 OPTIONS = {
     "argv_emulation": False,
-    # Keep the bundle small — exclude heavy ML frameworks that the user
-    # is expected to install separately (or via the in-app installer).
+    # torch is bundled (not excluded) — the app cannot run without it.
+    # Only the optional torchvision/torchaudio companions are excluded;
+    # they are not installed in the build venv and are not required for
+    # CPU-only training/inference.
     "excludes": [
-        "torch",
         "torchvision",
         "torchaudio",
-        "torch.distributed",
-        "torch.cuda",
-        "caffe2",
     ],
     "packages": [
         "gui",
@@ -67,6 +65,16 @@ OPTIONS = {
         "tensorboard",
         "yaml",
         "tqdm",
+        # PyTorch — bundled at build time.  Include its runtime deps so
+        # modulegraph doesn't miss any pulled in dynamically.
+        "torch",
+        "filelock",
+        "fsspec",
+        "jinja2",
+        "mpmath",
+        "networkx",
+        "sympy",
+        "typing_extensions",
         # PyObjC framework packages — required by webview.platforms.cocoa
         "objc",
         "AppKit",
