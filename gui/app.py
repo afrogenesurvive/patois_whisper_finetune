@@ -50,8 +50,81 @@ def build_app() -> gr.Blocks:
         css="""
         footer { display: none !important; }
         .gradio-container { max-width: 1200px !important; }
+
+        /* Floating "Quit App" button, pinned to the top-left corner */
+        #quit-app-btn {
+            position: fixed !important;
+            top: 12px !important;
+            left: 12px !important;
+            z-index: 9999 !important;
+            border: none;
+            border-radius: 8px;
+            background: rgba(60, 60, 60, 0.85);
+            color: #fff;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        }
+        #quit-app-btn:hover { background: #c0392b; }
+
+        /* Quit confirmation overlay */
+        .quit-overlay {
+            position: fixed !important;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100000 !important;
+        }
+        .quit-dialog {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            max-width: 360px;
+            text-align: center;
+        }
+        .quit-dialog h3 { margin: 0 0 8px; font-size: 17px; }
+        .quit-dialog p { color: #666; margin: 0 0 18px; font-size: 14px; }
+        .quit-actions { display: flex; gap: 10px; justify-content: center; }
+        .quit-actions button {
+            border: none; border-radius: 8px;
+            padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .quit-cancel { background: #e2e2e2; color: #333; }
+        .quit-cancel:hover { background: #d0d0d0; }
+        .quit-confirm { background: #c0392b; color: #fff; }
+        .quit-confirm:hover { background: #a93226; }
         """,
     ) as app:
+        # Floating "Quit App" button — pinned top-left. Quits via the
+        # pywebview JS bridge (only wired when running inside the .app;
+        # a harmless no-op when opened in a plain browser).
+        gr.HTML(
+            """
+            <button id="quit-app-btn"
+                    title="Quit the application"
+                    onclick="document.getElementById('quit-overlay').style.display='flex'">
+              ✕ Quit App
+            </button>
+            <div id="quit-overlay" class="quit-overlay" style="display:none;">
+              <div class="quit-dialog">
+                <h3>Quit Whisper Fine-Tune GUI?</h3>
+                <p>Any in-progress training or unsaved work will be lost.</p>
+                <div class="quit-actions">
+                  <button id="quit-cancel" class="quit-cancel"
+                          onclick="document.getElementById('quit-overlay').style.display='none'">Cancel</button>
+                  <button id="quit-confirm" class="quit-confirm"
+                          onclick="if (window.pywebview && window.pywebview.api && window.pywebview.api.quit_app) { pywebview.api.quit_app(); }">Quit</button>
+                </div>
+              </div>
+            </div>
+            """
+        )
+
         gr.Markdown(
             "# 🎙 Whisper Fine-Tune GUI\n"
             "Fine-tune Whisper models for Jamaican Patois transcription. "
